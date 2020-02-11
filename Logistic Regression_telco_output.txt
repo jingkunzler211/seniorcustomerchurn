@@ -1,0 +1,113 @@
+> rm(list = ls())
+> 
+> library(caTools)
+> 
+> setwd("/Users/jingk/OneDrive/Desktop/R Working Directory")
+> mydata<-read.csv("churn_6.csv",header = T)
+> 
+> mydata$SeniorCitizen <- as.factor(mydata$SeniorCitizen)
+> mydata$Partner <- as.factor(mydata$Partner)
+> mydata$Dependents <- as.factor(mydata$Dependents)
+> mydata$PaperlessBilling <- as.factor(mydata$PaperlessBilling)
+> mydata$Payment_ElectronicCheck <- as.factor(mydata$Payment_ElectronicCheck)
+> mydata$Payment_BankTransfer <- as.factor(mydata$Payment_BankTransfer)
+> mydata$Payment_MailedCheck <- as.factor(mydata$Payment_MailedCheck)
+> mydata$Payment_CreditCard <- as.factor(mydata$Payment_CreditCard)
+> mydata$Churn <- as.factor(mydata$Churn)
+> 
+> 
+> #split the data
+> split<-sample.split(mydata,SplitRatio = 0.8)
+> split
+[1]  TRUE  TRUE FALSE  TRUE FALSE  TRUE  TRUE  TRUE  TRUE
+> train<-subset(mydata,split=="TRUE")
+> test<-subset(mydata,split=="FALSE")
+> 
+> 
+> 
+> #Train th model using the training data
+> mymodel<-glm(Churn ~ SeniorCitizen + Partner + Dependents + Payment_ElectronicCheck + Payment_BankTransfer +
++                Payment_MailedCheck + Payment_CreditCard +
++                PaperlessBilling + SeniorCitizen * Partner + SeniorCitizen * Dependents +
++                SeniorCitizen * Payment_ElectronicCheck + SeniorCitizen * Payment_BankTransfer + SeniorCitizen * Payment_MailedCheck +
++               SeniorCitizen * Payment_CreditCard + SeniorCitizen * PaperlessBilling, data=train, family = 'binomial')
+> summary(mymodel)
+
+Call:
+glm(formula = Churn ~ SeniorCitizen + Partner + Dependents + 
+    Payment_ElectronicCheck + Payment_BankTransfer + Payment_MailedCheck + 
+    Payment_CreditCard + PaperlessBilling + SeniorCitizen * Partner + 
+    SeniorCitizen * Dependents + SeniorCitizen * Payment_ElectronicCheck + 
+    SeniorCitizen * Payment_BankTransfer + SeniorCitizen * Payment_MailedCheck + 
+    SeniorCitizen * Payment_CreditCard + SeniorCitizen * PaperlessBilling, 
+    family = "binomial", data = train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-1.3914  -0.7634  -0.5312   1.0011   2.3720  
+
+Coefficients: (2 not defined because of singularities)
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                             -1.90450    0.11357 -16.769  < 2e-16 ***
+SeniorCitizen1                           0.93044    0.25467   3.654 0.000259 ***
+Partner1                                -0.52288    0.08715  -5.999 1.98e-09 ***
+Dependents1                             -0.32381    0.09631  -3.362 0.000774 ***
+Payment_ElectronicCheck1                 1.35403    0.10849  12.481  < 2e-16 ***
+Payment_BankTransfer1                    0.10662    0.12923   0.825 0.409315    
+Payment_MailedCheck1                     0.34114    0.12261   2.782 0.005397 ** 
+Payment_CreditCard1                           NA         NA      NA       NA    
+PaperlessBilling1                        0.71403    0.08055   8.865  < 2e-16 ***
+SeniorCitizen1:Partner1                  0.15221    0.17056   0.892 0.372198    
+SeniorCitizen1:Dependents1              -0.26542    0.31110  -0.853 0.393565    
+SeniorCitizen1:Payment_ElectronicCheck1 -0.39018    0.22317  -1.748 0.080400 .  
+SeniorCitizen1:Payment_BankTransfer1    -0.40635    0.27342  -1.486 0.137235    
+SeniorCitizen1:Payment_MailedCheck1      0.68296    0.32605   2.095 0.036206 *  
+SeniorCitizen1:Payment_CreditCard1            NA         NA      NA       NA    
+SeniorCitizen1:PaperlessBilling1        -0.27397    0.19553  -1.401 0.161157    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 6345.2  on 5476  degrees of freedom
+Residual deviance: 5591.7  on 5463  degrees of freedom
+AIC: 5619.7
+
+Number of Fisher Scoring iterations: 4
+
+> 
+> #Run the test data through the model
+> res_test <-predict(mymodel,test,type="response")
+Warning message:
+In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+> 
+> #Validate the model - Confusion Matrix
+> confmatrix_test <-table(Actual_value=test$Churn, Predicted_value= res_test > 0.5)
+> confmatrix_test
+            Predicted_value
+Actual_value FALSE TRUE
+           0  1034  120
+           1   256  156
+> 
+> #Accuracy on test set
+> (confmatrix_test[[1,1]]+confmatrix_test[[2,2]])/sum(confmatrix_test)
+[1] 0.7598978
+> 
+> #Compare with confmatrix & accuracy of the model on train data 
+> res_train <-predict(mymodel,train,type="response")
+Warning message:
+In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+> 
+> #Validate the model - Confusion Matrix
+> confmatrix_train <-table(Actual_value=train$Churn, Predicted_value= res_train > 0.5)
+> confmatrix_train
+            Predicted_value
+Actual_value FALSE TRUE
+           0  3603  417
+           1   943  514
+> 
+> #Accuracy on train set
+> (confmatrix_train[[1,1]]+confmatrix_train[[2,2]])/sum(confmatrix_train)
+[1] 0.7516889

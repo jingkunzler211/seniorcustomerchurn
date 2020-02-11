@@ -1,0 +1,133 @@
+> rm(list = ls())
+> library("sandwich")
+> library("lmtest")
+> 
+> setwd("/Users/jingk/OneDrive/Desktop/R Working Directory")
+> mydata<-read.csv("churn_6.csv",header = T)
+> 
+> #split the data
+> split<-sample.split(mydata,SplitRatio = 0.8)
+> split
+[1]  TRUE  TRUE  TRUE FALSE  TRUE  TRUE  TRUE FALSE  TRUE
+> train<-subset(mydata,split=="TRUE")
+> test<-subset(mydata,split=="FALSE")
+> 
+> lmapp <- lm(Churn ~ SeniorCitizen + Partner + Dependents + Payment_ElectronicCheck + Payment_BankTransfer +
++               Payment_MailedCheck + Payment_CreditCard +
++               PaperlessBilling + SeniorCitizen * Partner + SeniorCitizen * Dependents +
++               SeniorCitizen * Payment_ElectronicCheck + SeniorCitizen * Payment_BankTransfer + SeniorCitizen * Payment_MailedCheck +
++               SeniorCitizen * Payment_CreditCard + SeniorCitizen * PaperlessBilling, data=train)
+> summary(lmapp)
+
+Call:
+lm(formula = Churn ~ SeniorCitizen + Partner + Dependents + Payment_ElectronicCheck + 
+    Payment_BankTransfer + Payment_MailedCheck + Payment_CreditCard + 
+    PaperlessBilling + SeniorCitizen * Partner + SeniorCitizen * 
+    Dependents + SeniorCitizen * Payment_ElectronicCheck + SeniorCitizen * 
+    Payment_BankTransfer + SeniorCitizen * Payment_MailedCheck + 
+    SeniorCitizen * Payment_CreditCard + SeniorCitizen * PaperlessBilling, 
+    data = train)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-0.5982 -0.2785 -0.1468  0.4018  0.9976 
+
+Coefficients: (2 not defined because of singularities)
+                                      Estimate Std. Error t value Pr(>|t|)    
+(Intercept)                            0.13407    0.01639   8.182 3.44e-16 ***
+SeniorCitizen                          0.13632    0.04410   3.091 0.002005 ** 
+Partner                               -0.08153    0.01416  -5.757 9.04e-09 ***
+Dependents                            -0.05016    0.01492  -3.362 0.000779 ***
+Payment_ElectronicCheck                0.26352    0.01716  15.358  < 2e-16 ***
+Payment_BankTransfer                   0.03231    0.01832   1.764 0.077858 .  
+Payment_MailedCheck                    0.04292    0.01782   2.408 0.016074 *  
+Payment_CreditCard                          NA         NA      NA       NA    
+PaperlessBilling                       0.11214    0.01261   8.896  < 2e-16 ***
+SeniorCitizen:Partner                 -0.01723    0.03193  -0.540 0.589536    
+SeniorCitizen:Dependents              -0.04943    0.05417  -0.913 0.361539    
+SeniorCitizen:Payment_ElectronicCheck -0.06108    0.04023  -1.518 0.129041    
+SeniorCitizen:Payment_BankTransfer    -0.09623    0.04697  -2.049 0.040557 *  
+SeniorCitizen:Payment_MailedCheck      0.09474    0.05889   1.609 0.107721    
+SeniorCitizen:Payment_CreditCard            NA         NA      NA       NA    
+SeniorCitizen:PaperlessBilling         0.01320    0.03580   0.369 0.712428    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.4122 on 5464 degrees of freedom
+Multiple R-squared:  0.1347,	Adjusted R-squared:  0.1327 
+F-statistic: 65.45 on 13 and 5464 DF,  p-value: < 2.2e-16
+
+> 
+> train$Churn.fit <- predict(lmapp)
+> plot(Churn ~ train$Churn.fit, data = train)
+> 
+> ##In order to conduct hypothesis tests and confidence intervals for the marginal effects an explanatory variable
+> ##has on the outcome variable, we must first correct for heteroskedasticity
+> ##All LPM Models are heteroskedastic
+> plot(y=lmapp$residuals^2, x=lmapp$fitted.values,
++      ylab="Squared Residuals", xlab="Predicted probabilities")
+> 
+> # the White estimator for correcting heteroskedasticity
+> # compute the White heteroskedastic variance/covariance matrix for the coefficients with the call to vcovHC
+> vv <- vcovHC(lmapp, type="HC1")
+> 
+> # Then we call coeftest() to use this estimate for the variance / covariance to properly compute our standard
+> # errors, t-statistics, and p-values for the coefficients.
+> coeftest(lmapp, vcov = vv)
+
+t test of coefficients:
+
+                                       Estimate Std. Error t value  Pr(>|t|)    
+(Intercept)                            0.134069   0.014317  9.3646 < 2.2e-16 ***
+SeniorCitizen                          0.136320   0.047763  2.8541 0.0043318 ** 
+Partner                               -0.081533   0.013582 -6.0029 2.063e-09 ***
+Dependents                            -0.050162   0.013469 -3.7242 0.0001979 ***
+Payment_ElectronicCheck                0.263520   0.017026 15.4778 < 2.2e-16 ***
+Payment_BankTransfer                   0.032313   0.015492  2.0857 0.0370489 *  
+Payment_MailedCheck                    0.042917   0.015211  2.8215 0.0047976 ** 
+PaperlessBilling                       0.112139   0.011952  9.3821 < 2.2e-16 ***
+SeniorCitizen:Partner                 -0.017230   0.035382 -0.4870 0.6263099    
+SeniorCitizen:Dependents              -0.049426   0.059210 -0.8348 0.4038883    
+SeniorCitizen:Payment_ElectronicCheck -0.061080   0.044423 -1.3750 0.1691999    
+SeniorCitizen:Payment_BankTransfer    -0.096227   0.048268 -1.9936 0.0462454 *  
+SeniorCitizen:Payment_MailedCheck      0.094743   0.066788  1.4186 0.1560847    
+SeniorCitizen:PaperlessBilling         0.013197   0.039518  0.3339 0.7384369    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+> 
+> ##predict on train set
+> res_train <-predict(lmapp,train,type="response")
+Warning message:
+In predict.lm(lmapp, train, type = "response") :
+  prediction from a rank-deficient fit may be misleading
+> 
+> confmatrix_train <-table(Actual_value=train$Churn, Predicted_value= res_train > 0.5)
+> confmatrix_train
+            Predicted_value
+Actual_value FALSE TRUE
+           0  3686  328
+           1  1041  423
+> 
+> #Accuracy for train set
+> (confmatrix_train[[1,1]]+confmatrix_train[[2,2]])/sum(confmatrix_train)
+[1] 0.7500913
+> 
+> ##predict on test data
+> #Run the test data through the model
+> res_test <-predict(lmapp,test,type="response")
+Warning message:
+In predict.lm(lmapp, test, type = "response") :
+  prediction from a rank-deficient fit may be misleading
+> 
+> #Validate the model - Confusion Matrix
+> confmatrix_test <-table(Actual_value=test$Churn, Predicted_value= res_test > 0.5)
+> confmatrix_test
+            Predicted_value
+Actual_value FALSE TRUE
+           0  1069   91
+           1   276  129
+> 
+> #Accuracy for test set
+> (confmatrix_test[[1,1]]+confmatrix_test[[2,2]])/sum(confmatrix_test)
+[1] 0.7654952
